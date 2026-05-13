@@ -255,7 +255,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text-dark
     <p class="lsub">UTI – Hospital dos Pescadores</p>
     <div class="fg"><label>Enfermeiro(a)</label><select id="lu"><option value="">Selecione seu nome…</option></select></div>
     <div class="fg"><label>Senha</label><input type="password" id="lp" placeholder="Digite sua senha"></div>
-    <button class="btn-p" onclick="doLogin()">Entrar</button>
+    <button class="btn-p" id="lbtn" onclick="doLogin()">Entrar</button>
     <p class="lerr" id="lerr">Usuário ou senha inválidos.</p>
   </div>
 </div>
@@ -415,6 +415,27 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text-dark
 <div class="lov" id="lov"><div class="lbox"><div class="lspin"></div><p id="lovtxt">Carregando…</p></div></div>
 <div class="toast" id="toast"></div>
 
+<!-- MODAL TROCA DE SENHA -->
+<div id="modal-senha" style="display:none;position:fixed;inset:0;background:rgba(13,31,60,.55);z-index:900;align-items:center;justify-content:center;padding:24px;">
+  <div style="background:white;border-radius:20px;padding:40px 36px 32px;width:100%;max-width:400px;box-shadow:0 12px 48px rgba(13,31,60,.22);position:relative;overflow:hidden;">
+    <div style="position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,var(--teal),var(--gold));"></div>
+    <div style="text-align:center;margin-bottom:22px;">
+      <div style="width:48px;height:48px;background:linear-gradient(135deg,var(--navy),var(--teal));border-radius:12px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+      </div>
+      <h2 style="font-family:'Fraunces',serif;font-size:19px;color:var(--navy);margin-bottom:6px;">Crie sua senha</h2>
+      <p id="modal-subtxt" style="font-size:12px;color:var(--text-light);line-height:1.5;">Este é seu primeiro acesso. Por segurança, cadastre uma senha pessoal.</p>
+    </div>
+    <div class="fg"><label>Nova Senha</label><input type="password" id="ms-nova" placeholder="Mínimo 6 caracteres"></div>
+    <div class="fg"><label>Confirmar Senha</label><input type="password" id="ms-conf" placeholder="Repita a nova senha"></div>
+    <p style="font-size:11px;color:var(--danger);margin-bottom:14px;display:none;" id="ms-err">–</p>
+    <button class="btn-p" id="ms-btn" onclick="salvarSenha()">
+      <span style="width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;display:none;margin-right:6px;" id="ms-spin"></span>
+      Salvar e Entrar
+    </button>
+  </div>
+</div>
+
 <script>
 const APPS_SCRIPT_URL="https://script.google.com/macros/s/AKfycbwbKSBzXohKwzBRykzkuRsgjUiJZZw2t7yfsV2VBmY36Axkitefe4fmwnQxrm0wlmM_ew/exec";
 
@@ -457,13 +478,86 @@ function buildLk(id,crits,p){
     </div>`).join('');
 }
 
-function doLogin(){
+async function doLogin(){
   const nome=document.getElementById("lu").value,senha=document.getElementById("lp").value.trim();
   const err=document.getElementById("lerr");err.style.display="none";
+  const btn=document.getElementById("lbtn");
   if(!nome||!senha){err.textContent="Selecione seu nome e insira a senha.";err.style.display="block";return;}
-  const u=USUARIOS.find(x=>x.nome===nome&&x.senha===senha);
-  if(!u){err.textContent="Usuário ou senha inválidos.";err.style.display="block";return;}
-  CU=u;setupApp();
+
+  // Verifica se o usuário existe localmente
+  const uLocal=USUARIOS.find(x=>x.nome===nome);
+  if(!uLocal){err.textContent="Usuário não encontrado.";err.style.display="block";return;}
+
+  btn.disabled=true;btn.textContent="Verificando...";
+
+  try{
+    // Consulta senha na planilha
+    const res=await jsonpGet(APPS_SCRIPT_URL+"?action=getSenha&nome="+encodeURIComponent(nome));
+    const senhaAtual = res.senha || uLocal.senha; // fallback pra senha padrão se ainda não cadastrou
+    const isPadrao   = res.isPadrao !== false && senhaAtual === uLocal.senha;
+
+    if(senha !== senhaAtual){
+      err.textContent="Usuário ou senha inválidos.";err.style.display="block";
+      btn.disabled=false;btn.textContent="Entrar";return;
+    }
+
+    CU=uLocal;
+
+    if(isPadrao){
+      // Primeiro acesso — força troca de senha
+      btn.disabled=false;btn.textContent="Entrar";
+      abrirModalSenha(true);
+    } else {
+      btn.disabled=false;btn.textContent="Entrar";
+      setupApp();
+    }
+  }catch(e){
+    // Fallback offline: usa senha local
+    if(senha !== uLocal.senha){
+      err.textContent="Usuário ou senha inválidos.";err.style.display="block";
+      btn.disabled=false;btn.textContent="Entrar";return;
+    }
+    CU=uLocal;
+    btn.disabled=false;btn.textContent="Entrar";
+    setupApp();
+  }
+}
+
+function abrirModalSenha(isPrimeiro){
+  const modal=document.getElementById("modal-senha");
+  document.getElementById("modal-subtxt").textContent= isPrimeiro
+    ? "Este é seu primeiro acesso. Por segurança, cadastre uma senha pessoal antes de continuar."
+    : "Digite sua senha atual e cadastre uma nova.";
+  modal.style.display="flex";
+  document.getElementById("ms-nova").value="";
+  document.getElementById("ms-conf").value="";
+  document.getElementById("ms-err").style.display="none";
+  document.getElementById("ms-nova").focus();
+}
+
+async function salvarSenha(){
+  const nova=document.getElementById("ms-nova").value.trim();
+  const conf=document.getElementById("ms-conf").value.trim();
+  const errEl=document.getElementById("ms-err");
+  errEl.style.display="none";
+
+  if(nova.length<6){errEl.textContent="A senha deve ter no mínimo 6 caracteres.";errEl.style.display="block";return;}
+  if(nova!==conf){errEl.textContent="As senhas não coincidem.";errEl.style.display="block";return;}
+
+  const btn=document.getElementById("ms-btn"),sp=document.getElementById("ms-spin");
+  btn.disabled=true;sp.style.display="inline-block";
+
+  try{
+    await fetch(APPS_SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},
+      body:JSON.stringify({action:"setSenha",nome:CU.nome,senha:nova})});
+    document.getElementById("modal-senha").style.display="none";
+    btn.disabled=false;sp.style.display="none";
+    showToast("✅ Senha cadastrada com sucesso!","success");
+    setupApp();
+  }catch(e){
+    errEl.textContent="Erro ao salvar. Tente novamente.";errEl.style.display="block";
+    btn.disabled=false;sp.style.display="none";
+  }
 }
 
 async function setupApp(){
