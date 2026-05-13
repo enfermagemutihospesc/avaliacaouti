@@ -458,6 +458,12 @@ const USUARIOS=[
 const TD=["Ana Angelica da Silva Sales","Andre Luis Ferreira","Camila Annylavia Candido da Silva","Daniele de Sousa Leite","Danyllo Wesley Cavalcanti Teixeira","Emerson Souza Cunha","Fabiana Pereira de Alexandria","Girleide Caridade da Costa","Jefferson Andre Silva do Nascimento","José Gelson de Mourão Bispo de Roma","Luana Maria Bezerra","Marcia de Carvalho","Maria de Fatima Santana de Azevedo","Maria Rosani de Monte Martins","Roberta Emillia de Souza Feliciano","Wagner Lucas Pereira da Silva","Zenilda Terezinha do Bonfim Pinheiro"];
 const TN=["Adriana Paulino de Andrade","Alisson Leon Martins Pereira","Andreza Catarina Dantas dos Santos","Darciana Paula Lopes Silva do Nascimento","Emiliane Martins de Melo","Fabiano de Paiva Costa","Francikely Bezerra da Silva Seabra","Genilza Nascimento Cruz","Igna Ingrydy de Araújo Silva","Ivanilson de Oliveira Inacio","Jucilea Pereira de Gois Nascimento","Kathyuce Kais Xavier de Souza","Maria Zilma de Souza","Odeilde Francisca dos Santos Pereira","Vanessa Amorim Cabral","Yuri Alvares Rocha"];
 const AENF=USUARIOS.filter(u=>u.tipo==="enfermeiro").map(u=>u.nome);
+
+// Mapa turno de cada profissional
+const TURNO_MAP={};
+TD.forEach(n=>TURNO_MAP[n]="Diurno");
+TN.forEach(n=>TURNO_MAP[n]="Noturno");
+USUARIOS.forEach(u=>TURNO_MAP[u.nome]=u.turno);
 const CT=[{n:1,nome:"Pontualidade",desc:"Cumpre horários de entrada, saída e intervalos. Pronto para a passagem de plantão."},{n:2,nome:"Assiduidade",desc:"Frequência regular, sem faltas injustificadas ou atrasos que sobrecarreguem a equipe."},{n:3,nome:"Postura Profissional",desc:"Conduta ética, uniforme/EPIs corretos, comunicação respeitosa e uso adequado do celular."},{n:4,nome:"Técnica em Procedimentos",desc:"Segurança em banho de leito, mudança de decúbito, punção venosa, administração de medicamentos e curativos."},{n:5,nome:"Adaptação à Rotina",desc:"Reposição de materiais, expurgo, checklists, sinais vitais e balanço hídrico nos horários corretos."},{n:6,nome:"Vigilância e Monitorização",desc:"Atenção aos alarmes de monitores e bombas. Reporta imediatamente alterações agudas ao enfermeiro."},{n:7,nome:"Registro e Anotação de Enfermagem",desc:"Anotações claras, legíveis e fidedignas sobre cuidados e intercorrências."}];
 const CE=[{n:1,nome:"Pontualidade",desc:"Cumpre horários de entrada, saída e passagem de plantão."},{n:2,nome:"Assiduidade",desc:"Frequência regular, sem faltas que comprometam a cobertura da unidade."},{n:3,nome:"Postura Profissional",desc:"Conduta ética, uniforme/EPIs corretos, comunicação respeitosa com equipe, pacientes e familiares."},{n:4,nome:"Liderança de Equipe",desc:"Coordena e orienta os técnicos com clareza, distribui tarefas e resolve conflitos com equilíbrio."},{n:5,nome:"Supervisão dos Técnicos",desc:"Acompanha a execução dos procedimentos, corrigindo desvios de forma educativa e oportuna."},{n:6,nome:"Gestão de Medicamentos Controlados",desc:"Prescrição, controle e registro de psicotrópicos, antibióticos e drogas vasoativas."},{n:7,nome:"Técnica e Assistência Avançada",desc:"Passagem de sonda nasogástrica, cateterismo vesical, curativos complexos e suporte a punções centrais."},{n:8,nome:"Adaptação à Rotina da Unidade",desc:"Checklists, protocolos institucionais, bundles de prevenção e gestão de materiais."},{n:9,nome:"Vigilância e Tomada de Decisão",desc:"Monitora ativamente, interpreta dados clínicos e aciona o médico com objetividade."},{n:10,nome:"Registro e Evolução de Enfermagem",desc:"Evoluções claras, com registro de intercorrências, intervenções e resposta ao tratamento."}];
 const LL=["Insuficiente","Abaixo do\nEsperado","Atende às\nExpectativas","Supera as\nExpectativas","Referência"];
@@ -582,9 +588,17 @@ async function setupApp(){
   const lst=u.tipo==="coordenadora"?[...TD,...TN].sort():(u.turno==="Diurno"?TD:TN);
   const st=document.getElementById("ta");
   lst.forEach(n=>{const o=document.createElement("option");o.value=o.textContent=n;st.appendChild(o);});
+  st.addEventListener("change",()=>{
+    const turno=TURNO_MAP[st.value];
+    if(turno) document.getElementById("ttu").value=turno;
+  });
   if(u.tipo==="coordenadora"){
     const se=document.getElementById("ea");
     AENF.forEach(n=>{const o=document.createElement("option");o.value=o.textContent=n;se.appendChild(o);});
+    se.addEventListener("change",()=>{
+      const turno=TURNO_MAP[se.value];
+      if(turno) document.getElementById("etu").value=turno;
+    });
     await carregarDados();
   }
 }
