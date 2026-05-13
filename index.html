@@ -523,12 +523,26 @@ async function carregarDados(silent=false){
     AVS=demoData();hideLov();renderDash();populaMes();return;
   }
   try{
-    const r=await fetch(APPS_SCRIPT_URL+"?action=listar");
-    const d=await r.json();AVS=d.avaliacoes||[];
+    const d=await jsonpGet(APPS_SCRIPT_URL+"?action=listar");
+    AVS=d.avaliacoes||[];
     HM={};const ag=new Date();
     AVS.forEach(a=>{const[,m,y]=a.data.split("/");if(parseInt(m)===ag.getMonth()+1&&parseInt(y)===ag.getFullYear())HM[a.avaliado+"_"+m+"/"+y]=true;});
-  }catch(e){AVS=[];showToast("Erro ao carregar dados.","error");}
+  }catch(e){AVS=[];showToast("Erro ao carregar dados: "+e.message,"error");}
   hideLov();renderDash();populaMes();
+}
+
+// JSONP — único jeito de fazer GET cross-origin no Apps Script publicado
+function jsonpGet(url){
+  return new Promise((resolve,reject)=>{
+    const cb="__cb"+Date.now();
+    const script=document.createElement("script");
+    const timer=setTimeout(()=>{cleanup();reject(new Error("Timeout"));},15000);
+    function cleanup(){delete window[cb];if(script.parentNode)document.head.removeChild(script);clearTimeout(timer);}
+    window[cb]=data=>{cleanup();resolve(data);};
+    script.src=url+"&callback="+cb;
+    script.onerror=()=>{cleanup();reject(new Error("Script error"));};
+    document.head.appendChild(script);
+  });
 }
 
 function demoData(){return[
@@ -671,8 +685,11 @@ async function submitF(p){
     await new Promise(r=>setTimeout(r,1400));
     AVS.push({...payload});finEnvio(p,av,btn,sp,tx,true);return;
   }
-  try{await fetch(APPS_SCRIPT_URL,{method:"POST",body:JSON.stringify(payload)});AVS.push({...payload});finEnvio(p,av,btn,sp,tx,true);}
-  catch(e){finEnvio(p,av,btn,sp,tx,false);}
+  try{
+    // POST via no-cors + URLSearchParams (contorna CORS do Apps Script)
+    await fetch(APPS_SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify(payload)});
+    AVS.push({...payload});finEnvio(p,av,btn,sp,tx,true);
+  }catch(e){finEnvio(p,av,btn,sp,tx,false);}
 }
 
 function finEnvio(p,av,btn,sp,tx,ok){
