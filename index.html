@@ -585,9 +585,12 @@ async function setupApp(){
     goView("ft");
   }
   if(u.tipo==="coordenadora") document.getElementById("tab-fe").style.display="inline-block";
-  const lst=u.tipo==="coordenadora"?[...TD,...TN].sort():(u.turno==="Diurno"?TD:TN);
   const st=document.getElementById("ta");
-  lst.forEach(n=>{const o=document.createElement("option");o.value=o.textContent=n;st.appendChild(o);});
+  const grpD=document.createElement("optgroup");grpD.label="── Diurno ──";
+  TD.slice().sort().forEach(n=>{const o=document.createElement("option");o.value=o.textContent=n;grpD.appendChild(o);});
+  const grpN=document.createElement("optgroup");grpN.label="── Noturno ──";
+  TN.slice().sort().forEach(n=>{const o=document.createElement("option");o.value=o.textContent=n;grpN.appendChild(o);});
+  st.appendChild(grpD);st.appendChild(grpN);
   st.addEventListener("change",()=>{
     const turno=TURNO_MAP[st.value];
     if(turno) document.getElementById("ttu").value=turno;
