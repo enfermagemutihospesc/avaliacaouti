@@ -582,11 +582,9 @@ async function setupApp(){
   const lst=u.tipo==="coordenadora"?[...TD,...TN].sort():(u.turno==="Diurno"?TD:TN);
   const st=document.getElementById("ta");
   lst.forEach(n=>{const o=document.createElement("option");o.value=o.textContent=n;st.appendChild(o);});
-  st.addEventListener("change",()=>checkC("t"));
   if(u.tipo==="coordenadora"){
     const se=document.getElementById("ea");
     AENF.forEach(n=>{const o=document.createElement("option");o.value=o.textContent=n;se.appendChild(o);});
-    se.addEventListener("change",()=>checkC("e"));
     await carregarDados();
   }
 }
@@ -745,14 +743,7 @@ function abrirPerfil(nome,aba){
   goView("perfil");
 }
 
-function checkC(p){
-  const av=document.getElementById(p==="t"?"ta":"ea").value;
-  const ae=document.getElementById(p+"av-aviso"),at=document.getElementById(p+"av-txt");
-  if(!av){ae.style.display="none";return;}
-  const d=new Date(),chave=av+"_"+(d.getMonth()+1)+"/"+d.getFullYear();
-  if(HM[chave]){at.textContent=av+" já foi avaliado(a) neste ciclo. A última avaliação enviada será considerada válida.";ae.style.display="flex";}
-  else ae.style.display="none";
-}
+function checkC(p){} // avaliações múltiplas liberadas
 
 async function submitF(p){
   const crits=p==="t"?CT:CE,aba=p==="t"?"Técnicos":"Enfermeiros";
